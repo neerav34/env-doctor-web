@@ -10,6 +10,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://env-doctor-web.vercel.app'),
   title: 'env-doctor — The eslint of environment variables',
   description: 'Catch missing .env entries before they hit production. Multi-language env var linter for JS, Python, Go, Ruby, Rust, PHP.',
   keywords: ['env', 'dotenv', 'environment variables', 'cli', 'developer tools', 'linter'],
@@ -17,6 +18,12 @@ export const metadata: Metadata = {
     title: 'env-doctor',
     description: 'The eslint of environment variables',
     type: 'website',
+    url: 'https://env-doctor-web.vercel.app',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'env-doctor',
+    description: 'The eslint of environment variables',
   },
 }
 
