@@ -24,15 +24,15 @@ const FEATURES = [
     accent: 'group-hover:text-green-400',
   },
   {
-    icon: '📊',
-    title: 'Health score',
-    desc: 'env-doctor doctor gives you a 0–100 score and actionable suggestions to improve your env hygiene.',
+    icon: '🗂️',
+    title: 'Monorepo support',
+    desc: 'Pass --monorepo and each package is scanned independently. Separate reports per service across Node, Go, Rust, Python, and Ruby.',
     accent: 'group-hover:text-pink-400',
   },
   {
     icon: '🔧',
-    title: 'Flexible output',
-    desc: 'Pretty terminal output, JSON for scripting, or Markdown for docs. Strict mode, custom paths, CI-friendly exit codes.',
+    title: 'No false positives',
+    desc: 'Understands //, #, *, /*, --, and <!-- comment styles. Env vars inside commented-out code are never flagged.',
     accent: 'group-hover:text-orange-400',
   },
 ]
