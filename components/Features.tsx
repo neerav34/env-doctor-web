@@ -2,7 +2,7 @@ const FEATURES = [
   {
     icon: '🌐',
     title: '7 languages',
-    desc: 'JS/TS, Python, Go, Ruby, Rust, PHP, Shell, Docker. Dot notation, bracket notation, and function calls all detected.',
+    desc: 'JS/TS, Python, Go, Ruby, Rust, PHP, Shell, Docker. Dot notation, bracket notation, destructuring, and function calls all detected.',
     accent: 'group-hover:text-blue-400',
   },
   {
