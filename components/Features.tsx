@@ -26,7 +26,7 @@ const FEATURES = [
   {
     icon: '🗂️',
     title: 'Monorepo support',
-    desc: 'Pass --monorepo and each package is scanned independently. Separate reports per service across Node, Go, Rust, Python, and Ruby.',
+    desc: 'Pass --monorepo and each package is scanned independently. Auto-discovers .env.local, .env.production, .env.staging and merges them all.',
     accent: 'group-hover:text-pink-400',
   },
   {
