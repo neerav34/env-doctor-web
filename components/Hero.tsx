@@ -62,7 +62,7 @@ export default function Hero() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-1 text-xs font-mono rounded-full bg-green-500/10 border border-green-500/20 text-green-400">
-                v1.0.5 — now on npm
+                v1.0.6 — now on npm
               </span>
             </div>
 

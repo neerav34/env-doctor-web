@@ -30,9 +30,9 @@ const FEATURES = [
     accent: 'group-hover:text-pink-400',
   },
   {
-    icon: '🔧',
-    title: 'No false positives',
-    desc: 'Understands //, #, *, /*, --, and <!-- comment styles. Env vars inside commented-out code are never flagged.',
+    icon: '🔒',
+    title: 'Secret exposure detection',
+    desc: 'Auto-detects Next.js, Vite, and CRA. Flags NEXT_PUBLIC_, VITE_, and REACT_APP_ vars that look like secrets before they leak to the browser.',
     accent: 'group-hover:text-orange-400',
   },
 ]
