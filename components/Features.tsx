@@ -31,8 +31,8 @@ const FEATURES = [
   },
   {
     icon: '🔒',
-    title: 'Secret exposure detection',
-    desc: 'Auto-detects Next.js, Vite, and CRA. Flags NEXT_PUBLIC_, VITE_, and REACT_APP_ vars that look like secrets before they leak to the browser.',
+    title: 'Secret exposure & audit',
+    desc: 'Flags browser-exposed secrets (NEXT_PUBLIC_, VITE_) and runs env-doctor audit to detect real leaked credentials — Stripe, AWS, GitHub, npm, and more.',
     accent: 'group-hover:text-orange-400',
   },
 ]
