@@ -19,8 +19,8 @@ const FEATURES = [
   },
   {
     icon: '📄',
-    title: '.env.example sync',
-    desc: 'Run env-doctor init to auto-generate or update your .env.example from actual code references.',
+    title: '.env.example sync & diff',
+    desc: 'Run env-doctor init to auto-generate .env.example. Run env-doctor diff to see exactly what changed since the last commit — added, removed, modified.',
     accent: 'group-hover:text-green-400',
   },
   {
