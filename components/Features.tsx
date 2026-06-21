@@ -7,8 +7,8 @@ const FEATURES = [
   },
   {
     icon: '⚡',
-    title: 'Millisecond scans',
-    desc: 'Scans hundreds of files in under 200ms. Respects .gitignore, custom ignore patterns, and nested directories.',
+    title: 'Zero config — or your config',
+    desc: 'Works out of the box. Drop a .env-doctor.json to set envFile, exampleFile, ignore patterns, strict mode, and more. CLI flags always win.',
     accent: 'group-hover:text-yellow-400',
   },
   {
