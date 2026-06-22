@@ -108,6 +108,7 @@ export default function Hero() {
                 { label: '7 languages', color: 'text-blue-400' },
                 { label: '63 tests', color: 'text-green-400' },
                 { label: 'MIT license', color: 'text-zinc-400' },
+                { label: 'VS Code ext', color: 'text-sky-400' },
               ].map(({ label, color }) => (
                 <span key={label} className={`text-xs font-mono ${color}`}>
                   ✓ {label}

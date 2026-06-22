@@ -35,6 +35,12 @@ const FEATURES = [
     desc: 'Flags browser-exposed secrets (NEXT_PUBLIC_, VITE_) and runs env-doctor audit to detect real leaked credentials — Stripe, AWS, GitHub, npm, and more.',
     accent: 'group-hover:text-orange-400',
   },
+  {
+    icon: '🧩',
+    title: 'VS Code extension',
+    desc: 'Inline squiggles on every process.env.VAR that\'s missing from .env.example — as you type, no terminal needed. Install free from the VS Code Marketplace.',
+    accent: 'group-hover:text-sky-400',
+  },
 ]
 
 export default function Features() {
