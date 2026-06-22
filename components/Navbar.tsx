@@ -17,6 +17,14 @@ export default function Navbar() {
             <span>v1.0.9</span>
           </a>
           <a
+            href="https://marketplace.visualstudio.com/items?itemName=neeravjha.env-doctor"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 rounded-md transition-colors"
+          >
+            <span className="text-sky-400">VS Code</span>
+          </a>
+          <a
             href="https://github.com/neerav34/env-doctor"
             target="_blank"
             rel="noopener noreferrer"
