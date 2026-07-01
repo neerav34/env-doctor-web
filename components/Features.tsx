@@ -37,7 +37,7 @@ const FEATURES = [
   {
     icon: '🔒',
     title: 'Secret exposure & audit',
-    desc: 'Flags browser-exposed secrets (NEXT_PUBLIC_, VITE_) and runs env-doctor audit to detect real leaked credentials — Stripe, AWS, GitHub, npm, and more.',
+    desc: 'Flags browser-exposed secrets (NEXT_PUBLIC_, VITE_), runs env-doctor audit to detect leaked credentials, and generates a runtime validator that crashes the app at startup if required vars are missing.',
     accent: 'group-hover:text-orange-400',
     link: null,
   },
