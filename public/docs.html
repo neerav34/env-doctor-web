@@ -1,0 +1,1301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="env-doctor — complete reference manual. All CLI commands, scan pipeline internals, VS Code extension, CI integration, and troubleshooting.">
+<meta name="theme-color" content="#090e1b">
+<title>env-doctor — Reference Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground:     #090e1b;
+    --surface:    #0f1729;
+    --surface2:   #162038;
+    --border:     #1e2c42;
+    --text:       #dde4ef;
+    --muted:      #5c7394;
+    --accent:     #22d3a0;
+    --accent-dim: #6ee7b7;
+    --error:      #f87171;
+    --warn:       #fbbf24;
+    --info:       #60a5fa;
+    --code-bg:    #070c18;
+    --nav-w:      248px;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --ground:     #f1f5fb;
+      --surface:    #ffffff;
+      --surface2:   #e8f0f8;
+      --border:     #ced9e8;
+      --text:       #0c1a2e;
+      --muted:      #6d8aaa;
+      --accent:     #0fa87e;
+      --accent-dim: #1dbf92;
+      --error:      #dc2626;
+      --warn:       #d97706;
+      --info:       #2563eb;
+      --code-bg:    #e4ecf6;
+    }
+  }
+  :root[data-theme="light"] {
+    --ground:     #f1f5fb;
+    --surface:    #ffffff;
+    --surface2:   #e8f0f8;
+    --border:     #ced9e8;
+    --text:       #0c1a2e;
+    --muted:      #6d8aaa;
+    --accent:     #0fa87e;
+    --accent-dim: #1dbf92;
+    --error:      #dc2626;
+    --warn:       #d97706;
+    --info:       #2563eb;
+    --code-bg:    #e4ecf6;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ground);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ────────────────────────────────────────────── */
+  .sidebar {
+    width: var(--nav-w);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 0 0 48px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .sidebar-header {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 22px 20px 18px;
+    z-index: 1;
+  }
+
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .logo-env  { color: var(--text); }
+  .logo-dash { color: var(--accent); }
+
+  .logo-pulse { display: inline-block; width: 30px; height: 15px; }
+
+  .logo-meta {
+    margin-top: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    display: flex;
+    gap: 10px;
+  }
+
+  .nav-group { padding: 20px 12px 4px; }
+
+  .nav-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 8px 8px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    text-decoration: none;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    transition: color 0.13s, background 0.13s;
+  }
+
+  .nav-link:hover { color: var(--text); background: var(--surface2); }
+  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+  .nav-pip {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.13s;
+  }
+
+  .nav-link.active .nav-pip { background: var(--accent); }
+
+  /* ── Main ───────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    min-width: 0;
+    max-width: 900px;
+    padding: 52px 60px 96px;
+  }
+
+  /* ── Section structure ──────────────────────────────────── */
+  .section { margin-bottom: 72px; scroll-margin-top: 20px; }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin-bottom: 18px;
+  }
+
+  h1 .hl { color: var(--accent); }
+
+  h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin: 44px 0 14px;
+    text-wrap: balance;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    scroll-margin-top: 20px;
+  }
+
+  h2::before {
+    content: '';
+    width: 3px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 28px 0 10px;
+    letter-spacing: -0.01em;
+  }
+
+  h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 22px 0 8px;
+  }
+
+  p { color: var(--text); max-width: 70ch; margin-bottom: 14px; opacity: 0.88; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { padding-left: 22px; margin-bottom: 14px; max-width: 68ch; }
+  li { margin-bottom: 4px; color: var(--text); opacity: 0.87; }
+
+  /* ── Code ───────────────────────────────────────────────── */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    background: var(--code-bg);
+    color: var(--accent-dim);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    font-style: normal;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin: 12px 0 20px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.7;
+    font-style: normal;
+  }
+
+  .pre-caption {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+
+  .kw   { color: #c084fc; }
+  .str  { color: #86efac; }
+  .cm   { color: var(--muted); font-style: italic; }
+  .fn   { color: #7dd3fc; }
+  .num  { color: var(--warn); }
+  .op   { color: var(--accent-dim); }
+  .cmd  { color: var(--accent); font-weight: 600; }
+  .flg  { color: #f9a8d4; }
+  .err  { color: var(--error); }
+  .wrn  { color: var(--warn); }
+  .ok   { color: var(--accent); }
+  .dim  { color: var(--muted); }
+  .loc  { color: var(--info); }
+  .hd   { font-weight: 700; }
+
+  /* ── Terminal ───────────────────────────────────────────── */
+  .term {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    overflow: hidden;
+    margin: 14px 0 22px;
+  }
+
+  .term-bar {
+    background: var(--surface2);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .td { width: 10px; height: 10px; border-radius: 50%; }
+  .td-r { background: #ff5f57; }
+  .td-y { background: #febc2e; }
+  .td-g { background: #28c840; }
+  .term-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); margin-left: 6px; }
+
+  .term-body {
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.75;
+  }
+
+  /* ── Tables ─────────────────────────────────────────────── */
+  .tbl-wrap { overflow-x: auto; margin: 14px 0 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 8px 14px 8px 0;
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 14px 9px 0;
+    color: var(--text);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+    vertical-align: top;
+  }
+  td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  /* ── Pipeline ───────────────────────────────────────────── */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    margin: 20px 0 28px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pipe-step {
+    flex: 1;
+    min-width: 110px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-right: none;
+    padding: 14px 14px 12px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pipe-step:first-child { border-radius: 8px 0 0 8px; }
+  .pipe-step:last-child  { border-right: 1px solid var(--border); border-radius: 0 8px 8px 0; }
+
+  .pipe-step::after {
+    content: '→';
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 14px;
+    z-index: 1;
+  }
+
+  .pipe-step:last-child::after { display: none; }
+
+  .pipe-n { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .pipe-title { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--accent); }
+  .pipe-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  /* ── Callout ────────────────────────────────────────────── */
+  .callout {
+    display: flex;
+    gap: 12px;
+    padding: 13px 16px;
+    border-radius: 7px;
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    margin: 14px 0 20px;
+    font-size: 13.5px;
+  }
+
+  .callout p { margin: 0; max-width: unset; opacity: 1; }
+  .callout-warn  { border-color: var(--warn);  background: color-mix(in srgb, var(--warn)  7%, var(--surface)); }
+  .callout-error { border-color: var(--error); background: color-mix(in srgb, var(--error) 7%, var(--surface)); }
+  .callout-icon { flex-shrink: 0; font-size: 16px; line-height: 1.7; }
+
+  /* ── Badge ──────────────────────────────────────────────── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    vertical-align: middle;
+  }
+
+  .b-err  { background: color-mix(in srgb, var(--error) 15%, transparent); color: var(--error); }
+  .b-warn { background: color-mix(in srgb, var(--warn)  15%, transparent); color: var(--warn); }
+  .b-ok   { background: color-mix(in srgb, var(--accent)15%, transparent); color: var(--accent); }
+  .b-info { background: color-mix(in srgb, var(--info)  15%, transparent); color: var(--info); }
+
+  /* ── Score box ──────────────────────────────────────────── */
+  .score-box {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 18px 22px;
+    margin: 16px 0 24px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .score-num { font-size: 44px; font-weight: 700; color: var(--accent); line-height: 1; flex-shrink: 0; }
+  .score-detail { flex: 1; }
+  .score-formula { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .score-bar-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--error) 0%, var(--warn) 50%, var(--accent) 100%); }
+
+  /* ── Exit grid ──────────────────────────────────────────── */
+  .exit-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 12px 0 22px;
+    font-size: 13px;
+  }
+
+  .exit-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 18px;
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--border);
+    color: var(--accent-dim);
+    display: flex;
+    align-items: center;
+  }
+
+  .exit-desc {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .exit-row:last-child .exit-code,
+  .exit-row:last-child .exit-desc { border-bottom: none; }
+
+  /* ── Option table ───────────────────────────────────────── */
+  .opt-table { margin: 10px 0 22px; }
+
+  .opt-row {
+    display: grid;
+    grid-template-columns: minmax(190px, auto) minmax(80px, auto) 1fr;
+    gap: 0 16px;
+    padding: 9px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    font-size: 13px;
+    align-items: start;
+  }
+
+  .opt-row:last-child { border-bottom: none; }
+  .opt-flag { font-family: 'JetBrains Mono', monospace; color: var(--accent-dim); font-size: 12px; white-space: nowrap; }
+  .opt-arg { color: var(--muted); }
+  .opt-default { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .opt-desc { color: var(--text); opacity: 0.85; }
+
+  /* ── Pattern group ──────────────────────────────────────── */
+  .pattern-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 14px 0 22px;
+  }
+
+  .pattern-lang {
+    background: var(--surface2);
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pattern-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+    font-size: 12.5px;
+  }
+
+  .pattern-item:last-child { border-bottom: none; }
+
+  .pattern-regex {
+    font-family: 'JetBrains Mono', monospace;
+    padding: 10px 16px;
+    color: var(--warn);
+    border-right: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+    overflow-x: auto;
+    font-size: 11.5px;
+  }
+
+  .pattern-example {
+    font-family: 'JetBrains Mono', monospace;
+    padding: 10px 16px;
+    color: var(--accent-dim);
+    font-size: 11.5px;
+  }
+
+  /* ── Divider ────────────────────────────────────────────── */
+  hr.div { border: none; border-top: 1px solid var(--border); margin: 60px 0; }
+
+  /* ── Heartbeat ──────────────────────────────────────────── */
+  @keyframes hb-draw {
+    0%   { stroke-dashoffset: 80; opacity: 0; }
+    15%  { opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: 1; }
+  }
+
+  .hb-path {
+    stroke-dasharray: 80;
+    stroke-dashoffset: 80;
+    animation: hb-draw 1.6s ease-out forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hb-path { animation: none; stroke-dashoffset: 0; opacity: 1; }
+  }
+
+  /* ── Responsive ─────────────────────────────────────────── */
+  @media (max-width: 760px) {
+    body { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid var(--border); }
+    .nav-group { display: none; }
+    .main { padding: 28px 20px 64px; }
+    h1 { font-size: 26px; }
+    .pipeline { flex-direction: column; }
+    .pipe-step { border-right: 1px solid var(--border); border-bottom: none; border-radius: 0; }
+    .pipe-step:first-child { border-radius: 8px 8px 0 0; }
+    .pipe-step:last-child  { border-bottom: 1px solid var(--border); border-radius: 0 0 8px 8px; }
+    .pipe-step::after { content: '↓'; right: unset; bottom: -14px; left: 50%; transform: translateX(-50%); }
+    .pattern-item { grid-template-columns: 1fr; }
+    .pattern-regex { border-right: none; border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
+    .opt-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar" aria-label="Documentation">
+  <div class="sidebar-header">
+    <a href="/" class="logo">
+      <span class="logo-env">env</span><span class="logo-dash">-doctor</span>
+      <svg class="logo-pulse" viewBox="0 0 30 15" fill="none" aria-hidden="true">
+        <polyline class="hb-path"
+          points="0,7.5 6,7.5 9,2 12,13 15.5,4 18.5,7.5 30,7.5"
+          stroke="#22d3a0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+    <div class="logo-meta"><span>v1.0.10</span><span>·</span><span>MIT</span></div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Overview</div>
+    <a class="nav-link" href="#why"><span class="nav-pip"></span>Why env-doctor</a>
+    <a class="nav-link" href="#install"><span class="nav-pip"></span>Installation</a>
+    <a class="nav-link" href="#quickstart"><span class="nav-pip"></span>Quick Start</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">How it works</div>
+    <a class="nav-link" href="#pipeline"><span class="nav-pip"></span>Scan pipeline</a>
+    <a class="nav-link" href="#scanner"><span class="nav-pip"></span>File scanner</a>
+    <a class="nav-link" href="#detector"><span class="nav-pip"></span>Detector</a>
+    <a class="nav-link" href="#parser"><span class="nav-pip"></span>.env parser</a>
+    <a class="nav-link" href="#analyzer"><span class="nav-pip"></span>Analyzer</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Commands</div>
+    <a class="nav-link" href="#config"><span class="nav-pip"></span>.env-doctor.json</a>
+    <a class="nav-link" href="#check"><span class="nav-pip"></span>check</a>
+    <a class="nav-link" href="#init"><span class="nav-pip"></span>init</a>
+    <a class="nav-link" href="#doctor"><span class="nav-pip"></span>doctor</a>
+    <a class="nav-link" href="#diff"><span class="nav-pip"></span>diff</a>
+    <a class="nav-link" href="#audit"><span class="nav-pip"></span>audit</a>
+    <a class="nav-link" href="#generate-validator"><span class="nav-pip"></span>generate-validator</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Integrations</div>
+    <a class="nav-link" href="#vscode"><span class="nav-pip"></span>VS Code extension</a>
+    <a class="nav-link" href="#github-action"><span class="nav-pip"></span>GitHub Action</a>
+    <a class="nav-link" href="#ci"><span class="nav-pip"></span>CI / GitLab</a>
+    <a class="nav-link" href="#monorepo"><span class="nav-pip"></span>Monorepo</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Reference</div>
+    <a class="nav-link" href="#patterns"><span class="nav-pip"></span>Detection patterns</a>
+    <a class="nav-link" href="#issue-types"><span class="nav-pip"></span>Issue types</a>
+    <a class="nav-link" href="#exit-codes"><span class="nav-pip"></span>Exit codes</a>
+    <a class="nav-link" href="#troubleshoot"><span class="nav-pip"></span>Troubleshooting</a>
+  </div>
+</nav>
+
+<main class="main">
+
+  <div class="section" id="intro">
+    <div class="eyebrow">Reference Manual</div>
+    <h1>env<span class="hl">-doctor</span></h1>
+    <p>env-doctor is a static analysis tool for environment variables. It scans every source file in your project, extracts all <code>process.env</code> references (and equivalents in 7 languages), then cross-checks them against your <code>.env</code> and <code>.env.example</code> files. Discrepancies — missing variables, undocumented variables, unused variables, leaked credentials — are reported with exact file locations and fix suggestions.</p>
+    <p>It runs in milliseconds, requires zero configuration, and exits with codes CI pipelines understand. Nothing is sent to any server.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+      <a href="https://www.npmjs.com/package/@neerav34/env-doctor" class="badge b-ok">npm →</a>
+      <a href="https://github.com/neerav34/env-doctor" class="badge b-info">GitHub →</a>
+      <a href="https://marketplace.visualstudio.com/items?itemName=neeravjha.env-doctor" class="badge b-warn">VS Code →</a>
+    </div>
+  </div>
+
+  <hr class="div">
+
+  <div class="section" id="why">
+    <h2>Why env-doctor</h2>
+    <p>Environment variable problems are the number one cause of "works on my machine" bugs. The pattern is always the same: a developer adds <code>process.env.SOME_NEW_KEY</code>, forgets to add it to <code>.env.example</code>, the PR merges, a teammate pulls the branch and gets a cryptic runtime error, and thirty minutes of debugging later they realise the key was simply never set in their local <code>.env</code>.</p>
+    <p>The same problem shows up in production. A key is added in the code, the deployment script doesn't set it, and the app boots, runs for a while, and then crashes exactly when the code path that needs that key is first reached — sometimes hours later, sometimes in front of a user.</p>
+    <p>env-doctor solves this at three layers:</p>
+    <ul>
+      <li><strong>Development:</strong> the VS Code extension shows a squiggle on every undocumented env var as you type it.</li>
+      <li><strong>Code review:</strong> the GitHub Action comments on every PR with a table of issues, so they're caught before merge.</li>
+      <li><strong>Runtime:</strong> <code>generate-validator</code> writes a startup script that crashes immediately if any required variable is missing — before the rest of the app loads.</li>
+    </ul>
+  </div>
+
+  <div class="section" id="install">
+    <h2>Installation</h2>
+    <p>No install required to try it:</p>
+    <pre><code><span class="cmd">npx @neerav34/env-doctor</span> check</code></pre>
+    <p>Install globally to use as a plain <code>env-doctor</code> command:</p>
+    <pre><code><span class="cmd">npm install -g @neerav34/env-doctor</span></code></pre>
+    <p>Install as a dev dependency to pin a version for your team:</p>
+    <pre><code><span class="cmd">npm install --save-dev @neerav34/env-doctor</span></code></pre>
+    <p>Then add to <code>package.json</code> scripts:</p>
+    <pre><code><span class="str">"scripts"</span><span class="op">:</span> <span class="kw">{</span>
+  <span class="str">"env:check"</span><span class="op">:</span>  <span class="str">"env-doctor check"</span><span class="op">,</span>
+  <span class="str">"env:doctor"</span><span class="op">:</span> <span class="str">"env-doctor doctor"</span>
+<span class="kw">}</span></code></pre>
+    <div class="callout">
+      <span class="callout-icon">💡</span>
+      <p>Node.js 18+ is required. env-doctor uses native <code>fs/promises</code> and <code>Promise.allSettled</code>.</p>
+    </div>
+  </div>
+
+  <div class="section" id="quickstart">
+    <h2>Quick Start</h2>
+    <p>Run from your project root. env-doctor finds your source files automatically:</p>
+    <div class="term">
+      <div class="term-bar"><span class="td td-r"></span><span class="td td-y"></span><span class="td td-g"></span><span class="term-name">terminal — my-project/</span></div>
+      <div class="term-body">
+<span class="cmd">$ env-doctor check</span>
+
+  <span class="hd">ERRORS (2)</span>
+
+  <span class="err">✗  DATABASE_URL  [Missing Required]</span>
+     DATABASE_URL is referenced in 2 location(s) but not defined in .env or .env.example
+     <span class="loc">└─ src/db.ts:14</span>  <span class="dim">const pool = new Pool({ connectionString: process.env.DATABASE_URL });</span>
+     <span class="loc">└─ src/migrate.ts:6</span>  <span class="dim">await migrate({ url: process.env.DATABASE_URL });</span>
+     → Add DATABASE_URL to .env.example
+
+  <span class="err">✗  STRIPE_SECRET_KEY  [Missing Required]</span>
+     <span class="loc">└─ src/api.ts:5</span>  <span class="dim">const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);</span>
+     → Add STRIPE_SECRET_KEY to .env.example
+
+  <span class="hd">WARNINGS (2)</span>
+
+  <span class="wrn">⚠  OLD_API_KEY  [Unused Variable]</span>
+     OLD_API_KEY is defined in .env but never referenced in source code
+     → Remove OLD_API_KEY from .env or check for typos
+
+  <span class="wrn">⚠  REDIS_URL  [Example Drift]</span>
+     REDIS_URL exists in .env but is missing from .env.example
+     → Run `env-doctor check --fix` to sync .env.example
+
+  <span class="dim">Scanned 47 files in 38ms · 2 errors · 2 warnings</span>
+      </div>
+    </div>
+    <p>Auto-fix — updates <code>.env.example</code> to match what the code actually references:</p>
+    <pre><code><span class="cmd">env-doctor check</span> <span class="flg">--fix</span></code></pre>
+  </div>
+
+  <hr class="div">
+
+  <div class="section" id="pipeline">
+    <h2>Scan Pipeline</h2>
+    <p>Every command (check, doctor, init) runs the same five-stage pipeline. Understanding it helps you predict what env-doctor will and won't catch.</p>
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-n">01</div>
+        <div class="pipe-title">Discover</div>
+        <div class="pipe-desc">Glob source files, respect .gitignore and ignore patterns</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-n">02</div>
+        <div class="pipe-title">Filter</div>
+        <div class="pipe-desc">Skip binary files by checking for null bytes in first 1 KB</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-n">03</div>
+        <div class="pipe-title">Detect</div>
+        <div class="pipe-desc">Run regex patterns against every file, record exact line + column</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-n">04</div>
+        <div class="pipe-title">Parse</div>
+        <div class="pipe-desc">Read .env and .env.example into key→definition maps</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-n">05</div>
+        <div class="pipe-title">Analyze</div>
+        <div class="pipe-desc">Cross-reference all three maps, produce typed issues</div>
+      </div>
+    </div>
+    <p>Stages 02 and 03 run in parallel across all files using <code>Promise.allSettled</code>. A single unreadable file never aborts the scan — it's counted as skipped and the rest continue.</p>
+  </div>
+
+  <div class="section" id="scanner">
+    <h2>File Scanner</h2>
+    <p>The scanner's job is to produce a list of source files worth analysing.</p>
+    <h3>What it includes</h3>
+    <p>It globs the project root recursively for all files, then respects your <code>.gitignore</code> (when present). The default ignore list is:</p>
+    <pre><code>node_modules/**
+.git/**
+dist/**
+build/**
+.next/**
+.nuxt/**
+coverage/**
+*.min.js
+*.map</code></pre>
+    <p>Additional patterns can be added via <code>--ignore</code> or the <code>ignore</code> key in <code>.env-doctor.json</code>.</p>
+    <h3>Binary detection</h3>
+    <p>After globbing, each candidate file is checked for binary content before being read fully. The scanner opens the file, reads the first 1,024 bytes, and checks whether any byte is a null byte (<code>0x00</code>). If null bytes are found, the file is classified as binary and skipped. This handles images, compiled outputs, lock files, and archives — none of which would contain meaningful env var references anyway.</p>
+    <pre><code><span class="cm">// scanner.ts — binary detection</span>
+<span class="kw">const</span> buffer <span class="op">=</span> Buffer.<span class="fn">alloc</span>(<span class="num">1024</span>);
+<span class="kw">const</span> { bytesRead } <span class="op">=</span> <span class="kw">await</span> fd.<span class="fn">read</span>(buffer, <span class="num">0</span>, <span class="num">1024</span>, <span class="num">0</span>);
+<span class="cm">// Null bytes mean binary → skip</span>
+<span class="kw">return</span> <span class="op">!</span>buffer.<span class="fn">subarray</span>(<span class="num">0</span>, bytesRead).<span class="fn">includes</span>(<span class="num">0</span>);</code></pre>
+  </div>
+
+  <div class="section" id="detector">
+    <h2>Detector</h2>
+    <p>The detector runs a set of language-specific regex patterns against each file's content. Every match produces an <code>EnvVarReference</code> object with the variable name, file path, line number, column number, language, and surrounding source line for context.</p>
+    <h3>Comment skipping</h3>
+    <p>Before recording a match, the detector checks whether the line is commented out. A line is considered a comment if it starts (after trimming whitespace) with <code>//</code>, <code>#</code>, <code>*</code>, <code>/*</code>, <code>--</code>, or <code>&lt;!--</code>. Commented references are silently ignored.</p>
+    <h3>Deduplication</h3>
+    <p>The detector uses a <code>Set&lt;string&gt;</code> keyed on <code>varName:line:column</code>. If two patterns both match the same variable at the same position, only one reference is recorded.</p>
+    <h3>Destructuring (JS/TS)</h3>
+    <p>A separate pass handles <code>const { VAR1, VAR2 } = process.env</code>. The destructure body is split on commas, and each part is further split on <code>:</code> or <code>=</code> (to strip aliases and defaults) to extract the original key name. Only names matching <code>/^[A-Z_][A-Z0-9_]*$/</code> are recorded.</p>
+    <pre><code><span class="cm">// All forms are handled:</span>
+<span class="kw">const</span> { PORT, NODE_ENV } <span class="op">=</span> process.env
+<span class="kw">const</span> { PORT: port, NODE_ENV: env <span class="op">=</span> <span class="str">'dev'</span> } <span class="op">=</span> process.env
+<span class="kw">let</span>   { API_KEY, SECRET_KEY } <span class="op">=</span> process.env</code></pre>
+  </div>
+
+  <div class="section" id="parser">
+    <h2>.env Parser</h2>
+    <p>The parser reads both <code>.env</code> and <code>.env.example</code> into a <code>Map&lt;string, EnvVarDefinition&gt;</code>. It handles the full range of .env syntax found in real projects.</p>
+    <h3>What the parser handles</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Syntax</th><th>Example</th><th>Parsed value</th></tr></thead>
+        <tbody>
+          <tr><td>Bare assignment</td><td><code>PORT=3000</code></td><td><code>3000</code></td></tr>
+          <tr><td>Double-quoted</td><td><code>NAME="John Doe"</code></td><td><code>John Doe</code></td></tr>
+          <tr><td>Single-quoted</td><td><code>MSG='hello world'</code></td><td><code>hello world</code></td></tr>
+          <tr><td>Shell export prefix</td><td><code>export KEY=value</code></td><td><code>value</code></td></tr>
+          <tr><td>Inline comment</td><td><code>PORT=3000 # HTTP port</code></td><td><code>3000</code></td></tr>
+          <tr><td>Empty value</td><td><code>FEATURE_FLAG=</code></td><td><em>empty string</em></td></tr>
+          <tr><td>Multiline (quoted)</td><td><code>CERT="line1↵line2"</code></td><td>two-line string</td></tr>
+          <tr><td>Comment lines</td><td><code># this is a comment</code></td><td><em>skipped</em></td></tr>
+          <tr><td>Blank lines</td><td></td><td><em>skipped</em></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Key validation</h3>
+    <p>Only keys matching <code>/^[A-Za-z_][A-Za-z0-9_]*$/</code> are accepted. Invalid keys (spaces, hyphens, leading digits) are silently skipped.</p>
+    <h3>Value truncation in output</h3>
+    <p>When displaying values, env-doctor shows only the first 3 characters followed by <code>***</code>. A value <code>sk_live_abc123xyz</code> displays as <code>sk_***</code>. The full value is retained internally for <code>audit</code>'s secret detection — truncation is display-only.</p>
+    <h3>Missing files</h3>
+    <p>If <code>.env</code> doesn't exist, the parser returns an empty map and continues — this is normal in CI. If <code>.env.example</code> doesn't exist, env-doctor recommends running <code>env-doctor init</code> first.</p>
+  </div>
+
+  <div class="section" id="analyzer">
+    <h2>Analyzer</h2>
+    <p>The analyzer receives three maps — code references, <code>.env</code> definitions, <code>.env.example</code> definitions — and produces a sorted list of typed issues.</p>
+    <h3>Decision matrix</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>In code?</th><th>In .env?</th><th>In .env.example?</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>yes</td><td>no</td><td>no</td><td><span class="badge b-err">ERROR</span> Missing Required</td></tr>
+          <tr><td>yes</td><td>no</td><td>yes</td><td><span class="badge b-warn">WARN</span> Missing Optional (not set locally)</td></tr>
+          <tr><td>yes</td><td>yes</td><td>yes</td><td>✓ Clean</td></tr>
+          <tr><td>yes</td><td>yes</td><td>no</td><td><span class="badge b-warn">WARN</span> Example Drift (undocumented)</td></tr>
+          <tr><td>no</td><td>yes</td><td>—</td><td><span class="badge b-warn">WARN</span> Unused Variable</td></tr>
+          <tr><td>no</td><td>no</td><td>yes</td><td><span class="badge b-warn">WARN</span> Example Drift (stale example entry)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Browser exposure check</h3>
+    <p>If the analyzer detects Next.js or Vite, it flags any variable with a <code>NEXT_PUBLIC_</code> or <code>VITE_</code> prefix that looks like a secret name as <span class="badge b-err">ERROR browser-exposure</span>.</p>
+    <h3>Sort order</h3>
+    <p>Issues are always sorted: errors first, then warnings, then alphabetically by variable name within each group.</p>
+  </div>
+
+  <hr class="div">
+
+  <div class="section" id="config">
+    <h2>.env-doctor.json</h2>
+    <p>All CLI flags can be persisted in a <code>.env-doctor.json</code> file at your project root. CLI flags always win when they differ.</p>
+    <pre><code><span class="kw">{</span>
+  <span class="str">"envFile"</span><span class="op">:</span>     <span class="str">".env.local"</span>,     <span class="cm">// default: ".env"</span>
+  <span class="str">"exampleFile"</span><span class="op">:</span> <span class="str">".env.example"</span>,  <span class="cm">// default: ".env.example"</span>
+  <span class="str">"strict"</span><span class="op">:</span>      <span class="kw">false</span>,            <span class="cm">// default: false</span>
+  <span class="str">"format"</span><span class="op">:</span>      <span class="str">"pretty"</span>,         <span class="cm">// "pretty" | "json" | "markdown"</span>
+  <span class="str">"ignore"</span><span class="op">:</span>      <span class="kw">[</span><span class="str">"legacy/**"</span>, <span class="str">"scripts/migrate/**"</span><span class="kw">]</span>
+<span class="kw">}</span></code></pre>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>envFile</td><td>string</td><td>.env</td><td>Path to the .env file (relative to project root)</td></tr>
+          <tr><td>exampleFile</td><td>string</td><td>.env.example</td><td>Path to the .env.example file to cross-check against</td></tr>
+          <tr><td>strict</td><td>boolean</td><td>false</td><td>Treat warnings as errors — exit 1 instead of 2</td></tr>
+          <tr><td>format</td><td>string</td><td>pretty</td><td>Output format: <code>pretty</code> | <code>json</code> | <code>markdown</code></td></tr>
+          <tr><td>ignore</td><td>string[]</td><td>["node_modules"]</td><td>Additional glob patterns to skip. Merged with built-in list</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="check">
+    <h2>check</h2>
+    <p>Scans all source files and cross-checks every env var reference against <code>.env</code> and <code>.env.example</code>. Reports errors and warnings with exact file locations.</p>
+    <pre><code><span class="cmd">env-doctor check</span> [options]</code></pre>
+    <h3>Options</h3>
+    <div class="opt-table">
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--fix</span></div><div class="opt-default"></div><div class="opt-desc">Auto-update <code>.env.example</code> to include all env vars found in code. Preserves existing entries — only adds missing keys</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--strict</span></div><div class="opt-default"></div><div class="opt-desc">Treat warnings as errors — exit 1 instead of 2 when only warnings exist</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--env-file <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: .env</div><div class="opt-desc">Path to the .env file to check</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--example-file <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: .env.example</div><div class="opt-desc">Path to the .env.example file</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--ignore <span class="opt-arg">&lt;patterns…&gt;</span></span></div><div class="opt-default"></div><div class="opt-desc">Additional glob patterns to skip. Can be repeated</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--format <span class="opt-arg">&lt;fmt&gt;</span></span></div><div class="opt-default">default: pretty</div><div class="opt-desc"><code>pretty</code> | <code>json</code> | <code>markdown</code></div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--monorepo</span></div><div class="opt-default"></div><div class="opt-desc">Scan each package directory independently</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--no-color</span></div><div class="opt-default"></div><div class="opt-desc">Disable ANSI colour output</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--root <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: cwd</div><div class="opt-desc">Project root directory</div></div>
+    </div>
+    <h3>JSON output</h3>
+    <pre><code><span class="kw">{</span>
+  <span class="str">"success"</span><span class="op">:</span>  <span class="kw">false</span>,
+  <span class="str">"summary"</span><span class="op">:</span>  <span class="kw">{</span> <span class="str">"errors"</span><span class="op">:</span> <span class="num">1</span>, <span class="str">"warnings"</span><span class="op">:</span> <span class="num">1</span>, <span class="str">"scannedFiles"</span><span class="op">:</span> <span class="num">47</span>, <span class="str">"duration"</span><span class="op">:</span> <span class="num">38</span> <span class="kw">}</span>,
+  <span class="str">"issues"</span><span class="op">:</span> <span class="kw">[</span>
+    <span class="kw">{</span>
+      <span class="str">"severity"</span><span class="op">:</span>   <span class="str">"error"</span>,
+      <span class="str">"type"</span><span class="op">:</span>       <span class="str">"missing"</span>,
+      <span class="str">"variable"</span><span class="op">:</span>   <span class="str">"DATABASE_URL"</span>,
+      <span class="str">"message"</span><span class="op">:</span>    <span class="str">"DATABASE_URL is referenced in 2 location(s)..."</span>,
+      <span class="str">"suggestion"</span><span class="op">:</span> <span class="str">"Add DATABASE_URL to .env.example"</span>,
+      <span class="str">"references"</span><span class="op">:</span> <span class="kw">[{</span> <span class="str">"file"</span><span class="op">:</span> <span class="str">"src/db.ts"</span>, <span class="str">"line"</span><span class="op">:</span> <span class="num">14</span>, <span class="str">"column"</span><span class="op">:</span> <span class="num">42</span> <span class="kw">}]</span>
+    <span class="kw">}</span>
+  <span class="kw">]</span>
+<span class="kw">}</span></code></pre>
+    <h3>Exit codes</h3>
+    <div class="exit-grid">
+      <div class="exit-row"><div class="exit-code">0</div><div class="exit-desc">All clear — no errors, no warnings</div></div>
+      <div class="exit-row"><div class="exit-code">1</div><div class="exit-desc">ERROR-level issues (or <code>--strict</code> with warnings)</div></div>
+      <div class="exit-row"><div class="exit-code">2</div><div class="exit-desc">Only WARN-level issues</div></div>
+      <div class="exit-row"><div class="exit-code">3</div><div class="exit-desc">Fatal — bad arguments, unreadable project root</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="init">
+    <h2>init</h2>
+    <p>Generates or updates <code>.env.example</code> from all env var references found in your source code. Safe to re-run — it merges with existing content.</p>
+    <pre><code><span class="cmd">env-doctor init</span> [options]</code></pre>
+    <h3>What it writes</h3>
+    <pre><code><span class="cm"># Generated by env-doctor init — fill in real values</span>
+DATABASE_URL=
+JWT_SECRET=
+SESSION_SECRET=
+STRIPE_SECRET_KEY=</code></pre>
+    <h3>With --with-comments</h3>
+    <pre><code><span class="cm"># src/db.ts:14</span>
+DATABASE_URL=
+
+<span class="cm"># src/api.ts:5</span>
+STRIPE_SECRET_KEY=</code></pre>
+    <h3>Options</h3>
+    <div class="opt-table">
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--env-file <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: .env</div><div class="opt-desc">Source .env file</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--example-file <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: .env.example</div><div class="opt-desc">Target file to write to. Created if it doesn't exist; merged if it does</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--with-comments</span></div><div class="opt-default"></div><div class="opt-desc">Add a comment above each new entry with the source file and line number</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--root <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: cwd</div><div class="opt-desc">Project root directory</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="doctor">
+    <h2>doctor</h2>
+    <p>Runs the full scan and produces a health score (0–100) plus trend analysis vs. previous runs. History is stored in <code>.env-doctor/cache.json</code>.</p>
+    <pre><code><span class="cmd">env-doctor doctor</span> [options]</code></pre>
+    <p>Accepts the same options as <code>check</code>.</p>
+    <h3>Health score algorithm</h3>
+    <div class="score-box">
+      <div class="score-num">76</div>
+      <div class="score-detail">
+        <div class="score-formula">
+          score = max(0, 100 − (errors × 10) − (warnings × 3))<br>
+          Example: 2 errors + 2 warnings → 100 − 20 − 6 = <strong>74</strong>
+        </div>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:76%"></div></div>
+      </div>
+    </div>
+    <h3>History and trend</h3>
+    <p>Each scan saves to <code>.env-doctor/cache.json</code>:</p>
+    <pre><code><span class="kw">{</span>
+  <span class="str">"timestamp"</span><span class="op">:</span>   <span class="str">"2026-08-19T12:34:56.789Z"</span>,
+  <span class="str">"healthScore"</span><span class="op">:</span> <span class="num">76</span>,
+  <span class="str">"errorCount"</span><span class="op">:</span>  <span class="num">2</span>,
+  <span class="str">"warnCount"</span><span class="op">:</span>   <span class="num">2</span>
+<span class="kw">}</span></code></pre>
+    <div class="term">
+      <div class="term-bar"><span class="td td-r"></span><span class="td td-y"></span><span class="td td-g"></span><span class="term-name">env-doctor doctor</span></div>
+      <div class="term-body">
+  Trend: <span class="ok">↑ +12 pts from last scan</span> <span class="dim">(2026-08-18T09:00:00.000Z)</span>
+
+  <span class="hd">ENVIRONMENT HEALTH REPORT</span>
+
+  Health Score: <span class="ok">88/100</span> ✓
+
+  Breakdown:
+    Unused Variables    2  <span class="dim">(-6 pts)</span>
+    Example Drift       2  <span class="dim">(-6 pts)</span>
+
+  Recommendations:
+    • Review unused variables: OLD_KEY, TEST_TOKEN
+    • Run `env-doctor init` to regenerate .env.example
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="diff">
+    <h2>diff</h2>
+    <p>Shows what changed in <code>.env.example</code> since the last git commit — added, removed, modified. Requires git.</p>
+    <pre><code><span class="cmd">env-doctor diff</span> [options]</code></pre>
+    <div class="term">
+      <div class="term-bar"><span class="td td-r"></span><span class="td td-y"></span><span class="td td-g"></span><span class="term-name">env-doctor diff</span></div>
+      <div class="term-body">
+  <span class="ok">+ DATABASE_URL=</span>       <span class="dim">(added)</span>
+  <span class="ok">+ JWT_SECRET=</span>         <span class="dim">(added)</span>
+  <span class="err">- OLD_TOKEN=</span>          <span class="dim">(removed)</span>
+
+  3 change(s) detected
+      </div>
+    </div>
+    <h3>Options</h3>
+    <div class="opt-table">
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--example-file <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: .env.example</div><div class="opt-desc">File to compare</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--format <span class="opt-arg">&lt;fmt&gt;</span></span></div><div class="opt-default">default: pretty</div><div class="opt-desc"><code>pretty</code> or <code>json</code></div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--root <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: cwd</div><div class="opt-desc">Project root directory</div></div>
+    </div>
+    <h3>Exit codes</h3>
+    <div class="exit-grid">
+      <div class="exit-row"><div class="exit-code">0</div><div class="exit-desc">No changes since last commit</div></div>
+      <div class="exit-row"><div class="exit-code">1</div><div class="exit-desc">Changes detected</div></div>
+      <div class="exit-row"><div class="exit-code">3</div><div class="exit-desc">Not a git repo, or .env.example not tracked</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="audit">
+    <h2>audit</h2>
+    <p>Scans actual values in your <code>.env</code> against credential patterns. Catches real leaked secrets.</p>
+    <pre><code><span class="cmd">env-doctor audit</span> [options]</code></pre>
+    <div class="callout callout-error">
+      <span class="callout-icon">🔒</span>
+      <p>If audit finds an ERROR-level credential, rotate it immediately at the issuing service — don't just delete it from the file.</p>
+    </div>
+    <h3>Credential patterns</h3>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>💳</span> Stripe</div>
+      <div class="pattern-item"><div class="pattern-regex">^sk_(live|test)_[a-zA-Z0-9]{20,}</div><div class="pattern-example"><span class="err">ERROR</span> — secret key</div></div>
+      <div class="pattern-item"><div class="pattern-regex">^pk_(live|test)_[a-zA-Z0-9]{20,}</div><div class="pattern-example"><span class="wrn">WARN</span> — publishable key</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>☁️</span> AWS</div>
+      <div class="pattern-item"><div class="pattern-regex">^AKIA[0-9A-Z]{16}$</div><div class="pattern-example"><span class="err">ERROR</span> — access key ID</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>🐙</span> GitHub</div>
+      <div class="pattern-item"><div class="pattern-regex">^gh[pousr]_[a-zA-Z0-9]{36,}</div><div class="pattern-example"><span class="err">ERROR</span> — personal access token</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>📦</span> npm / Slack / SendGrid</div>
+      <div class="pattern-item"><div class="pattern-regex">^npm_[a-zA-Z0-9]{36,}</div><div class="pattern-example"><span class="err">ERROR</span> — npm token</div></div>
+      <div class="pattern-item"><div class="pattern-regex">^xox[baprs]-[a-zA-Z0-9-]{10,}</div><div class="pattern-example"><span class="err">ERROR</span> — Slack token</div></div>
+      <div class="pattern-item"><div class="pattern-regex">^SG\.[…]{22,}\.[…]{43,}</div><div class="pattern-example"><span class="err">ERROR</span> — SendGrid API key</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>🔑</span> JWT / PEM / Database URL</div>
+      <div class="pattern-item"><div class="pattern-regex">^eyJ[a-zA-Z0-9_-]+\.[…]\.[…]$</div><div class="pattern-example"><span class="wrn">WARN</span> — JWT</div></div>
+      <div class="pattern-item"><div class="pattern-regex">-----BEGIN … PRIVATE KEY-----</div><div class="pattern-example"><span class="err">ERROR</span> — PEM private key</div></div>
+      <div class="pattern-item"><div class="pattern-regex">^(postgres|mysql|mongodb|redis)://[^:]+:[^@]{4,}@</div><div class="pattern-example"><span class="wrn">WARN</span> — URL with password</div></div>
+    </div>
+    <h3>Options</h3>
+    <div class="opt-table">
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--env-file <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: .env</div><div class="opt-desc">File to audit (values read in full, no truncation)</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--format <span class="opt-arg">&lt;fmt&gt;</span></span></div><div class="opt-default">default: pretty</div><div class="opt-desc"><code>pretty</code> or <code>json</code></div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--root <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: cwd</div><div class="opt-desc">Project root directory</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="generate-validator">
+    <h2>generate-validator</h2>
+    <p>Generates a startup script from your <code>.env.example</code>. Every key in the example file becomes required. If any are missing at runtime, the app crashes immediately with a clear list before anything else loads.</p>
+    <pre><code><span class="cmd">env-doctor generate-validator</span> [options]</code></pre>
+    <h3>Options</h3>
+    <div class="opt-table">
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--example-file <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: .env.example</div><div class="opt-desc">Source file — every key here becomes required</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--output <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">env-validator.js</div><div class="opt-desc">Output file path</div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--typescript</span></div><div class="opt-default"></div><div class="opt-desc">Generate a <code>.ts</code> file instead of <code>.js</code></div></div>
+      <div class="opt-row"><div class="opt-flag"><span class="flg">--root <span class="opt-arg">&lt;path&gt;</span></span></div><div class="opt-default">default: cwd</div><div class="opt-desc">Project root directory</div></div>
+    </div>
+    <h3>Generated file</h3>
+    <pre><code><span class="cm">// Auto-generated by env-doctor — do not edit manually</span>
+<span class="cm">// Re-generate: npx @neerav34/env-doctor generate-validator</span>
+
+<span class="kw">const</span> REQUIRED_ENV_VARS <span class="op">=</span> [
+  <span class="str">"DATABASE_URL"</span>, <span class="str">"JWT_SECRET"</span>, <span class="str">"SESSION_SECRET"</span>, <span class="str">"PORT"</span>, <span class="str">"NODE_ENV"</span>
+];
+
+<span class="kw">const</span> missing <span class="op">=</span> REQUIRED_ENV_VARS.<span class="fn">filter</span>((key) <span class="op">=&gt;</span> <span class="op">!</span>process.env[key]);
+
+<span class="kw">if</span> (missing.length <span class="op">&gt;</span> <span class="num">0</span>) {
+  console.<span class="fn">error</span>(<span class="str">'[env-doctor] Missing required environment variables:'</span>);
+  missing.<span class="fn">forEach</span>((key) <span class="op">=&gt;</span> console.<span class="fn">error</span>(<span class="op">`</span>  - <span class="op">${</span>key<span class="op">}`</span>));
+  console.<span class="fn">error</span>(<span class="str">'[env-doctor] Add them to your environment and restart the app.'</span>);
+  process.<span class="fn">exit</span>(<span class="num">1</span>);
+}</code></pre>
+    <h3>Wire it into your entry file</h3>
+    <div class="pre-caption">CommonJS</div>
+    <pre><code><span class="fn">require</span>(<span class="str">'./env-validator.js'</span>); <span class="cm">// ← must be line 1, before everything</span>
+<span class="kw">const</span> express <span class="op">=</span> <span class="fn">require</span>(<span class="str">'express'</span>);</code></pre>
+    <div class="pre-caption">ESM / TypeScript</div>
+    <pre><code><span class="kw">import</span> <span class="str">'./env-validator.js'</span>; <span class="cm">// ← must be line 1</span>
+<span class="kw">import</span> express <span class="kw">from</span> <span class="str">'express'</span>;</code></pre>
+    <h3>What failure looks like</h3>
+    <div class="term">
+      <div class="term-bar"><span class="td td-r"></span><span class="td td-y"></span><span class="td td-g"></span><span class="term-name">node index.js (missing DATABASE_URL)</span></div>
+      <div class="term-body">
+<span class="err">[env-doctor] Missing required environment variables:</span>
+<span class="err">  - DATABASE_URL</span>
+<span class="err">  - JWT_SECRET</span>
+<span class="err">[env-doctor] Add them to your environment and restart the app.</span>
+      </div>
+    </div>
+    <div class="callout callout-warn">
+      <span class="callout-icon">⚠</span>
+      <p>Commit <code>env-validator.js</code> to your repository — do not gitignore it. The file contains no secrets; it's only a list of required key names. Every deployment environment needs it at startup.</p>
+    </div>
+  </div>
+
+  <hr class="div">
+
+  <div class="section" id="vscode">
+    <h2>VS Code Extension</h2>
+    <p>Inline squiggles on every <code>process.env.VAR</code> not in <code>.env.example</code> — as you type, no terminal needed.</p>
+    <p>Search <strong>env-doctor</strong> in the Extensions panel or: <a href="https://marketplace.visualstudio.com/items?itemName=neeravjha.env-doctor">Marketplace →</a></p>
+    <h3>How it works</h3>
+    <p>On activation the extension creates a <code>DiagnosticCollection</code> and a <code>FileSystemWatcher</code> on <code>**/.env.example</code>. Any change to that file re-runs on all open documents. For each JS/TS document it:</p>
+    <ol>
+      <li>Walks up from the file's own directory to find <code>.env.example</code> (handles multi-root workspaces).</li>
+      <li>Parses the file into a set of known keys.</li>
+      <li>Runs the same detection patterns as the CLI — dot notation, bracket notation, destructuring.</li>
+      <li>Creates a <code>vscode.Diagnostic</code> for each reference not in the known-keys set.</li>
+    </ol>
+    <h3>Settings</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>envDoctor.exampleFile</td><td>.env.example</td><td>Filename to look for when walking up from each open file</td></tr>
+          <tr><td>envDoctor.enabled</td><td>true</td><td>Disable all diagnostics without uninstalling</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Activation</h3>
+    <p>Activates on <code>onLanguage:javascript</code>, <code>onLanguage:typescript</code>, <code>onLanguage:javascriptreact</code>, <code>onLanguage:typescriptreact</code>. Open a JS or TS file to trigger it.</p>
+  </div>
+
+  <div class="section" id="github-action">
+    <h2>GitHub Action</h2>
+    <div class="pre-caption">.github/workflows/env-check.yml</div>
+    <pre><code><span class="kw">name:</span> <span class="str">Env Doctor</span>
+<span class="kw">on:</span> <span class="kw">[pull_request, push]</span>
+<span class="kw">jobs:</span>
+  <span class="kw">check:</span>
+    <span class="kw">runs-on:</span> <span class="str">ubuntu-latest</span>
+    <span class="kw">steps:</span>
+      <span class="kw">- uses:</span> <span class="str">actions/checkout@v4</span>
+      <span class="kw">- name:</span> <span class="str">env-doctor</span>
+        <span class="kw">run:</span> <span class="str">npx @neerav34/env-doctor check --strict --format markdown >> $GITHUB_STEP_SUMMARY</span>
+
+      <span class="cm"># Or use the marketplace action:</span>
+      <span class="kw">- uses:</span> <span class="str">neerav34/env-doctor-action@v1</span></code></pre>
+  </div>
+
+  <div class="section" id="ci">
+    <h2>CI Integration</h2>
+    <h3>GitLab CI</h3>
+    <pre><code><span class="kw">env-check:</span>
+  <span class="kw">stage:</span> <span class="str">validate</span>
+  <span class="kw">image:</span> <span class="str">node:18-alpine</span>
+  <span class="kw">script:</span>
+    <span class="str">- npx @neerav34/env-doctor check --strict --no-color</span></code></pre>
+    <h3>Pre-commit hook (Husky)</h3>
+    <pre><code><span class="cm"># .husky/pre-commit</span>
+<span class="cmd">npx @neerav34/env-doctor diff</span> <span class="op">||</span> <span class="kw">{</span>
+  <span class="fn">echo</span> <span class="str">".env.example has uncommitted changes"</span>
+  <span class="kw">exit</span> <span class="num">1</span>
+<span class="kw">}</span></code></pre>
+    <h3>package.json scripts</h3>
+    <pre><code><span class="str">"prestart"</span><span class="op">:</span>     <span class="str">"env-doctor check --strict"</span>,
+<span class="str">"env:check"</span><span class="op">:</span>   <span class="str">"env-doctor check"</span>,
+<span class="str">"env:doctor"</span><span class="op">:</span>  <span class="str">"env-doctor doctor"</span>,
+<span class="str">"env:audit"</span><span class="op">:</span>   <span class="str">"env-doctor audit"</span>,
+<span class="str">"env:init"</span><span class="op">:</span>    <span class="str">"env-doctor init --with-comments"</span></code></pre>
+  </div>
+
+  <div class="section" id="monorepo">
+    <h2>Monorepo</h2>
+    <p>With <code>--monorepo</code>, env-doctor discovers each package directory (by finding <code>package.json</code> files) and scans them independently — each against its own <code>.env*</code> files.</p>
+    <pre><code><span class="cmd">env-doctor check</span> <span class="flg">--monorepo</span>
+<span class="cmd">env-doctor doctor</span> <span class="flg">--monorepo</span></code></pre>
+    <p>Multi-env variants are auto-discovered per package: <code>.env.local</code>, <code>.env.staging</code>, <code>.env.production</code> are all merged when computing what's defined.</p>
+    <div class="callout">
+      <span class="callout-icon">💡</span>
+      <p>You can target a single package from the repo root with <code>--root packages/api</code> without <code>--monorepo</code>.</p>
+    </div>
+  </div>
+
+  <hr class="div">
+
+  <div class="section" id="patterns">
+    <h2>Detection Patterns</h2>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>🟨</span> JavaScript / TypeScript — all extensions</div>
+      <div class="pattern-item"><div class="pattern-regex">process\.env\.([A-Z_][A-Z0-9_]*)</div><div class="pattern-example">process.env.PORT</div></div>
+      <div class="pattern-item"><div class="pattern-regex">process\.env\[['"]([A-Z_][A-Z0-9_]*)['"\]]</div><div class="pattern-example">process.env['API_KEY']</div></div>
+      <div class="pattern-item"><div class="pattern-regex">import\.meta\.env\.([A-Z_][A-Z0-9_]*)</div><div class="pattern-example">import.meta.env.VITE_URL</div></div>
+      <div class="pattern-item"><div class="pattern-regex">const|let|var {…} = process.env</div><div class="pattern-example">const { PORT, NODE_ENV } = process.env</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>🐍</span> Python — .py only</div>
+      <div class="pattern-item"><div class="pattern-regex">os\.(?:environ\.get|getenv)\(\s*['"]([A-Z_][A-Z0-9_]*)['"]\s*</div><div class="pattern-example">os.environ.get('DB_URL')</div></div>
+      <div class="pattern-item"><div class="pattern-regex">os\.environ\[['"]([A-Z_][A-Z0-9_]*)['"\]]</div><div class="pattern-example">os.environ['SECRET']</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>🐹</span> Go — .go only</div>
+      <div class="pattern-item"><div class="pattern-regex">os\.Getenv\(\s*"([A-Z_][A-Z0-9_]*)"\s*\)</div><div class="pattern-example">os.Getenv("DATABASE_URL")</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>🦀</span> Rust — .rs only</div>
+      <div class="pattern-item"><div class="pattern-regex">env::var\(\s*"([A-Z_][A-Z0-9_]*)"\s*\)</div><div class="pattern-example">env::var("SECRET_KEY")</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>💎</span> Ruby — .rb only</div>
+      <div class="pattern-item"><div class="pattern-regex">ENV\[['"]([A-Z_][A-Z0-9_]*)['"\]]</div><div class="pattern-example">ENV['DATABASE_URL']</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>🐘</span> PHP — .php only</div>
+      <div class="pattern-item"><div class="pattern-regex">\$_ENV\[['"]([A-Z_][A-Z0-9_]*)['"\]]</div><div class="pattern-example">$_ENV['API_KEY']</div></div>
+      <div class="pattern-item"><div class="pattern-regex">getenv\(\s*['"]([A-Z_][A-Z0-9_]*)['"]\s*\)</div><div class="pattern-example">getenv('DB_HOST')</div></div>
+    </div>
+    <div class="pattern-group">
+      <div class="pattern-lang"><span>🐚</span> Shell / Docker — .sh, .bash, Dockerfile, docker-compose.yml</div>
+      <div class="pattern-item"><div class="pattern-regex">\$\{([A-Z_][A-Z0-9_]*)\}</div><div class="pattern-example">${DATABASE_URL}</div></div>
+      <div class="pattern-item"><div class="pattern-regex">(?&lt;![A-Za-z0-9_])\$([A-Z_][A-Z0-9_]*)(?![A-Za-z0-9_({])</div><div class="pattern-example">$PORT (shell scripts only)</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="issue-types">
+    <h2>Issue Types</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Type</th><th>Severity</th><th>When it fires</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>missing</td><td><span class="badge b-err">ERROR</span></td><td>Referenced in code, not in <code>.env</code> or <code>.env.example</code></td><td>Add to <code>.env.example</code> and set in <code>.env</code></td></tr>
+          <tr><td>missing</td><td><span class="badge b-warn">WARN</span></td><td>In <code>.env.example</code> but not in <code>.env</code></td><td>Copy from example and set a value locally</td></tr>
+          <tr><td>unused</td><td><span class="badge b-warn">WARN</span></td><td>In <code>.env</code> but never referenced in code</td><td>Remove or check for a typo</td></tr>
+          <tr><td>example-drift</td><td><span class="badge b-warn">WARN</span></td><td>Mismatch between <code>.env</code> and <code>.env.example</code></td><td>Run <code>env-doctor check --fix</code></td></tr>
+          <tr><td>browser-exposure</td><td><span class="badge b-err">ERROR</span></td><td><code>NEXT_PUBLIC_</code> or <code>VITE_</code> prefix on a secret-sounding name</td><td>Remove the public prefix</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="exit-codes">
+    <h2>Exit Codes</h2>
+    <div class="exit-grid">
+      <div class="exit-row"><div class="exit-code">0</div><div class="exit-desc">All clear — no errors, no warnings</div></div>
+      <div class="exit-row"><div class="exit-code">1</div><div class="exit-desc">ERROR-level issues (or <code>--strict</code> with warnings)</div></div>
+      <div class="exit-row"><div class="exit-code">2</div><div class="exit-desc">Only WARN-level issues</div></div>
+      <div class="exit-row"><div class="exit-code">3</div><div class="exit-desc">Fatal — bad arguments, unreadable project root, git unavailable</div></div>
+    </div>
+    <p>The distinction between 1 and 2 lets you fail hard on errors while surfacing warnings without breaking CI. Use <code>--strict</code> to collapse both to 1.</p>
+  </div>
+
+  <div class="section" id="troubleshoot">
+    <h2>Troubleshooting</h2>
+
+    <h3>env-doctor reports nothing but I know there are issues</h3>
+    <p>Make sure you're running from the correct directory — env-doctor scans from <code>cwd</code> by default. Use <code>--root</code> if your source files and <code>.env.example</code> are in different directories. Also confirm the file extension is one env-doctor knows about (see Detection Patterns).</p>
+
+    <h3>Lowercase variable names aren't detected</h3>
+    <p>By design. env-doctor only matches <code>/^[A-Z_][A-Z0-9_]*/</code>. The convention for env vars is uppercase — matching lowercase would produce too many false positives from JS object properties.</p>
+
+    <h3>A variable shows as missing but it's in .env.example</h3>
+    <p>Check the key name character by character — one typo breaks the match. Confirm the line isn't commented out (<code>#</code>) and that the format is valid (<code>KEY=</code> or <code>KEY=value</code>). A space before <code>=</code> on the key side (<code>KEY =value</code>) is not valid — the parser requires <code>KEY=value</code>.</p>
+
+    <h3>VS Code extension isn't showing squiggles</h3>
+    <p>Open the Output panel (⇧⌘U) and select <strong>env-doctor</strong> from the dropdown. The extension logs every scan there. Common causes: the extension hasn't activated (open a <code>.ts</code> or <code>.js</code> file), or <code>.env.example</code> wasn't found (check the log to see what path it found). After adding a variable to <code>.env.example</code>, save the file to trigger a re-scan.</p>
+
+    <h3>Too many false positives from shell scripts or Dockerfiles</h3>
+    <pre><code><span class="kw">{</span> <span class="str">"ignore"</span><span class="op">:</span> <span class="kw">[</span><span class="str">"scripts/deploy/**"</span>, <span class="str">"*.sh"</span><span class="kw">]</span> <span class="kw">}</span></code></pre>
+
+    <h3>generate-validator crashes on prod but not locally</h3>
+    <p>The validator checks <code>process.env</code> at module-load time. On most cloud platforms (Railway, Render, Heroku, Vercel) env vars are injected before Node starts — the validator should work. If you're using a container platform with a <code>CMD</code> entrypoint, check that env vars are available before the process starts, not injected after.</p>
+  </div>
+
+</main>
+
+<script>
+  const links = [...document.querySelectorAll('.nav-link')];
+  const sects = [...document.querySelectorAll('[id]')].filter(el =>
+    links.some(l => l.getAttribute('href') === '#' + el.id)
+  );
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      links.forEach(l => l.classList.remove('active'));
+      const a = links.find(l => l.getAttribute('href') === '#' + e.target.id);
+      if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+
+  sects.forEach(s => io.observe(s));
+</script>
+
+</body>
+</html>
